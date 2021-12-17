@@ -1,0 +1,6 @@
+.streamlit
+test.py
+__pycache__
+*~
+.idea
+.DS_Store
