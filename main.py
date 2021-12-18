@@ -28,7 +28,10 @@ for player in get_players():
 ID_TO_IMAGE = dict()
 for player in get_players():
     if player.get('photo', None):
-        ID_TO_IMAGE[player['_id']] = Image.frombytes('RGB', IMAGE_SIZE, player['photo'].encode('latin-1'))
+        try:
+            ID_TO_IMAGE[player['_id']] = Image.frombytes('RGB', IMAGE_SIZE, player['photo'].encode('latin-1'))
+        except:
+            ID_TO_IMAGE[player['_id']] = Image.frombytes('L', IMAGE_SIZE, player['photo'].encode('latin-1'))
 
 
 def format_player(name):
