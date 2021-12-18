@@ -5,6 +5,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from PIL import Image
 
 from objects.player import Positions, Player
 from objects.match import Match
@@ -17,9 +18,17 @@ page = st.sidebar.radio('', ('Trang chủ', 'Admin'))
 
 POSITION_LIST = [Positions.Goalkeeper.value, Positions.Defender.value,
                  Positions.Midfielder.value, Positions.Striker.value]
+MEDAL_ICONS = [':first_place_medal:', ':second_place_medal:', ':third_place_medal:']
+IMAGE_SIZE = (200, 200)
+
 ID_TO_PLAYER = dict()
 for player in get_players():
     ID_TO_PLAYER[player['_id']] = player['name']
+
+ID_TO_IMAGE = dict()
+for player in get_players():
+    if player.get('photo', None):
+        ID_TO_IMAGE[player['_id']] = Image.frombytes('RGB', IMAGE_SIZE, player['photo'].encode('latin-1'))
 
 
 def format_player(name):
@@ -32,14 +41,17 @@ def add_player_form():
         alias = st.text_input('Tên thi đấu')
         yob = st.number_input('Năm sinh', min_value=1980, max_value=2021)
         number = st.number_input('Số áo', min_value=1, max_value=99)
-        position = st.selectbox(
-            'Vị trí', POSITION_LIST)
+        position = st.selectbox('Vị trí', POSITION_LIST)
+        photo = st.file_uploader('Ảnh')
         submit = st.form_submit_button('Thêm')
         if submit:
-            if not name or not alias or not yob or not number:
+            if not name or not alias or not yob or not number or not photo:
                 st.error('Cần điền đủ thông tin')
             else:
-                player = Player(name, alias, yob, number, position)
+                photo = Image.open(photo)
+                photo = photo.resize(IMAGE_SIZE).tobytes().decode('latin-1')
+
+                player = Player(name, alias, yob, number, position, photo)
                 try:
                     create_player(player)
                     st.success(f'Thêm cầu thủ {name} thành công')
@@ -67,12 +79,21 @@ def update_player_form():
             position = st.selectbox(
                 'Vị trí', POSITION_LIST, index=POSITION_LIST.index(players[selected_index]['position'])
             )
+            current_photo = ID_TO_IMAGE.get(players[selected_index]['_id'], None)
+            if current_photo:
+                photo = st.image(current_photo, caption='Ảnh hiện tại')
+            new_photo = st.file_uploader('Tải ảnh mới')
             submit = st.form_submit_button('Cập nhật')
             if submit:
                 if not name or not alias or not yob or not number:
                     st.error('Cần điền đủ thông tin')
                 else:
-                    player = Player(name, alias, yob, number, position)
+                    photo = photo if new_photo is None else new_photo
+                    if photo:
+                        photo = Image.open(photo)
+                        photo = photo.resize(IMAGE_SIZE).tobytes().decode('latin-1')
+
+                    player = Player(name, alias, yob, number, position, photo)
                     try:
                         update_player(selected_id, player)
                         st.success(f'Cập nhật cầu thủ {name} thành công')
@@ -200,6 +221,8 @@ def show_team():
     players = get_players()
     for p in players:
         del p['_id']
+        if 'photo' in p:
+            del p['photo']
     df = pd.DataFrame.from_dict(players).rename(
         columns={'name': 'Tên', 'alias': 'Tên thi đấu', 'yob': 'Năm sinh', 'number': 'Số áo', 'position': 'Vị trí'}
     )
@@ -255,15 +278,21 @@ if page == 'Trang chủ':
     st.subheader(':star: Ngôi sao của FC KPop :star:')
     spacer()
 
-    star_columns = st.columns(2)
-    star_columns[0].subheader('Vua phá lưới :athletic_shoe:')
-    for pid, goals in goal_stats:
-        star_columns[0].write(f'{ID_TO_PLAYER[pid]} đã ghi {goals} bàn thắng')
+    title_columns = st.columns(2)
+    title_columns[0].subheader('Vua phá lưới :athletic_shoe:')
+    title_columns[1].subheader('Ông hoàng kiến tạo :goal_net:')
 
-    star_columns[1].subheader('Ông hoàng kiến tạo :goal_net:')
+    star_columns = st.columns(6)
 
-    for pid, assists in assist_stats:
-        star_columns[1].write(f'{ID_TO_PLAYER[pid]} đã kiến tạo {assists} lần')
+    for i, (pid, goals) in enumerate(goal_stats):
+        if ID_TO_IMAGE.get(pid, None):
+            star_columns[i].image(ID_TO_IMAGE[pid])
+        star_columns[i].write(f'{MEDAL_ICONS[i]} {ID_TO_PLAYER[pid]} đã ghi {goals} bàn thắng')
+
+    for i, (pid, assists) in enumerate(assist_stats):
+        if ID_TO_IMAGE.get(pid, None):
+            star_columns[i + 3].image(ID_TO_IMAGE[pid])
+        star_columns[i + 3].write(f'{MEDAL_ICONS[i]} {ID_TO_PLAYER[pid]} đã kiến tạo {assists} lần')
     spacer()
     spacer()
 

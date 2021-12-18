@@ -1,5 +1,6 @@
 import enum
 from dataclasses import dataclass
+from typing import Union
 
 
 class Positions(enum.Enum):
@@ -16,3 +17,4 @@ class Player:
     yob: int
     number: int
     position: Positions
+    photo: Union[str, None]

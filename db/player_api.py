@@ -29,7 +29,10 @@ def update_player(object_id: str, player: Player):
         client = pymongo.MongoClient(CONNECTION_STRING)
         db = client.get_database(st.secrets['DB_NAME'])
         collection = db.get_collection(st.secrets['COLLECTION_PLAYERS'])
-        collection.update_one({'_id': ObjectId(object_id)}, {'$set': player.__dict__})
+        player = player.__dict__
+        if player['photo'] is None:
+            del player['photo']
+        collection.update_one({'_id': ObjectId(object_id)}, {'$set': player})
     except:
         traceback.print_exc()
         raise Exception
