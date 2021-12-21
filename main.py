@@ -1,3 +1,4 @@
+import math
 import traceback
 from datetime import datetime
 
@@ -9,9 +10,11 @@ from PIL import Image
 
 from objects.player import Positions, Player
 from objects.match import Match
+from objects.debt import Debt
 from db.player_api import create_player, get_players, update_player
 from db.match_api import get_matches, create_match, update_match
 from db.stats_api import get_stats
+from db.debt_api import get_debt, create_debt, delete_debt
 
 st.set_page_config('FC KPop', layout='wide', page_icon=':soccer:')
 page = st.sidebar.radio('', ('Trang chủ', 'Admin'))
@@ -32,6 +35,13 @@ for player in get_players():
             ID_TO_IMAGE[player['_id']] = Image.frombytes('RGB', IMAGE_SIZE, player['photo'].encode('latin-1'))
         except:
             ID_TO_IMAGE[player['_id']] = Image.frombytes('L', IMAGE_SIZE, player['photo'].encode('latin-1'))
+
+ID_TO_DEBT = dict()
+debts = get_debt()
+for did in debts:
+    for detail in debts[did]['detail']:
+        ID_TO_DEBT[detail['_id']] = f'{ID_TO_PLAYER[detail["player_id"]]} ' \
+                                    f'{detail["value"]}k {detail["desc"]} ngày {detail["date"].date()}'
 
 
 def format_player(name):
@@ -199,6 +209,53 @@ def add_match_form():
                 st.error('Có lỗi xảy ra')
 
 
+def add_debt_form():
+    with st.form('add_debt'):
+        date = st.date_input('Ngày')
+        players = st.multiselect('Người nợ', get_player_ids(), format_func=format_player)
+        value = st.number_input('Tổng tiền')
+        desc = st.text_input('Ghi chú')
+        submit = st.form_submit_button('Thêm con nợ')
+
+        if submit:
+            if not players or not value or not desc:
+                st.error('Chưa điền đủ thông tin')
+                return
+            else:
+                date = datetime.combine(date, datetime.min.time())
+                value_per_player = math.ceil(float(value) / len(players))
+                try:
+                    for player in players:
+                        new_debt = Debt(player, date=date, value=value_per_player, desc=desc)
+                        create_debt(new_debt)
+                    st.success(f'Thêm các con nợ thành công')
+                except:
+                    st.error('Có lỗi xảy ra')
+
+
+def delete_debt_form():
+    debts = get_debt()
+
+    with st.form('delete_debt'):
+        checkboxes = dict()
+        for did in debts:
+            for detail in debts[did]['detail']:
+                checkboxes[detail['_id']] = st.checkbox(ID_TO_DEBT[detail['_id']])
+        submit = st.form_submit_button('Xóa')
+        if submit:
+            delete_ids = [did for did in checkboxes if checkboxes[did]]
+            try:
+                if delete_ids:
+                    delete_debt(delete_ids)
+                    st.caching.clear_memo_cache()
+                    st.success('Xóa nợ thành công')
+                else:
+                    st.error('Chưa chọn khoản nợ nào')
+            except:
+                traceback.print_exc()
+                st.error('Xoá nợ thành công')
+
+
 def show_schedule():
     st.subheader('Lịch thi đấu :date:')
     matches = get_matches()
@@ -299,14 +356,33 @@ if page == 'Trang chủ':
     spacer()
     spacer()
 
-    info_cols = st.columns(2)
-    info_cols[0].subheader('Bạn muốn bón hành cho chúng tôi? Liên hệ ngay :phone:')
+    info_header_cols = st.columns([2, 3, 1])
+
+    info_cols = st.columns([2, 3, 1])
+    info_header_cols[0].subheader('Bạn muốn bón hành cho chúng tôi? Liên hệ ngay :phone:')
     info_cols[0].write('Đội trưởng Sờ Mít Râu: https://www.facebook.com/duong.kip')
 
-    info_cols[1].subheader('Thông tin chuyển khoản')
-    info_cols[1].write('Ngân hàng :bank: Vietcombank')
-    info_cols[1].write('STK :1234: 0021000393362')
-    info_cols[1].write('Tên :credit_card: Nguyễn Tuấn Anh')
+    debt = get_debt()
+    info_header_cols[1].subheader('Bốc bát họ')
+    if not debt:
+        info_cols[1].write('Không ai có nợ')
+    else:
+        table_data = []
+
+        for player_id in debt:
+            tmp = {'Tên': ID_TO_PLAYER[player_id], 'Nợ': debt[player_id]['sum']}
+            detail_text = []
+            for detail in debt[player_id]['detail']:
+                detail_text.append(f'{detail["date"].date()}: {detail["desc"]} {detail["value"]}')
+            tmp['Chi tiết'] = ' | '.join(detail_text)
+            table_data.append(tmp)
+        df = pd.DataFrame.from_records(table_data)
+        info_cols[1].table(df.assign(hack='').set_index('hack'))
+
+    info_header_cols[-1].subheader('Thông tin chuyển khoản')
+    info_cols[-1].write('Ngân hàng :bank: Vietcombank')
+    info_cols[-1].write('STK :1234: 0021000393362')
+    info_cols[-1].write('Tên :credit_card: Nguyễn Tuấn Anh')
 
 else:
     st.title('Trang quản lý')
@@ -316,11 +392,12 @@ else:
             def format_tab(option):
                 tmp = {
                     'add_player': 'Thêm cầu thủ', 'update_player': 'Cập nhật thông tin cầu thủ',
-                    'add_match': 'Thêm trận đấu', 'update_match': 'Cập nhật thông tin trận đấu'
+                    'add_match': 'Thêm trận đấu', 'update_match': 'Cập nhật thông tin trận đấu',
+                    'add_debt': 'Thêm con nợ', 'delete_debt': 'Xóa nợ'
                 }
                 return tmp[option]
 
-            tab = st.radio('', ('add_player', 'update_player', 'add_match', 'update_match'),
+            tab = st.radio('', ('add_player', 'update_player', 'add_match', 'update_match', 'add_debt', 'delete_debt'),
                            format_func=format_tab)
             st.subheader(format_tab(tab))
             if tab == 'add_player':
@@ -331,5 +408,9 @@ else:
                 add_match_form()
             elif tab == 'update_match':
                 update_match_form()
+            elif tab == 'add_debt':
+                add_debt_form()
+            elif tab == 'delete_debt':
+                delete_debt_form()
         else:
             st.error('Thích mò mật khẩu không thằng lòn? Máy mày sẽ bị dính virus :)')
