@@ -41,7 +41,7 @@ def update_player(object_id: str, player: Player):
             client.close()
 
 
-@st.experimental_memo(ttl=120)
+@st.experimental_memo(ttl=120, show_spinner=False)
 def get_players():
     client = None
     try:

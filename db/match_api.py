@@ -23,7 +23,7 @@ def create_match(match: Match):
             client.close()
 
 
-@st.experimental_memo(ttl=120)
+@st.experimental_memo(ttl=120, show_spinner=False)
 def get_matches():
     client = None
     try:
