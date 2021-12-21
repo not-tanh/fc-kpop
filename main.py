@@ -94,14 +94,14 @@ def update_player_form():
             )
             current_photo = ID_TO_IMAGE.get(players[selected_index]['_id'], None)
             if current_photo:
-                photo = st.image(current_photo, caption='Ảnh hiện tại')
+                st.image(current_photo, caption='Ảnh hiện tại')
             new_photo = st.file_uploader('Tải ảnh mới')
             submit = st.form_submit_button('Cập nhật')
             if submit:
                 if not name or not alias or not yob or not number:
                     st.error('Cần điền đủ thông tin')
                 else:
-                    photo = photo if new_photo is None else new_photo
+                    photo = current_photo if new_photo is None else new_photo
                     if photo:
                         photo = Image.open(photo)
                         photo = photo.resize(IMAGE_SIZE).tobytes().decode('latin-1')
