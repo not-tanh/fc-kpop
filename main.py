@@ -373,7 +373,7 @@ if page == 'Trang chủ':
             tmp = {'Tên': ID_TO_PLAYER[player_id], 'Nợ': debt[player_id]['sum']}
             detail_text = []
             for detail in debt[player_id]['detail']:
-                detail_text.append(f'{detail["date"].date()}: {detail["desc"]} {detail["value"]}')
+                detail_text.append(f'{detail["date"].date()}: {detail["value"]}k {detail["desc"]}')
             tmp['Chi tiết'] = ' | '.join(detail_text)
             table_data.append(tmp)
         df = pd.DataFrame.from_records(table_data)
