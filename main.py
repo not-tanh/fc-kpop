@@ -43,6 +43,18 @@ for did in debts:
         ID_TO_DEBT[detail['_id']] = f'{ID_TO_PLAYER[detail["player_id"]]} ' \
                                     f'{detail["value"]}k {detail["desc"]} ngày {detail["date"].date()}'
 
+ID_TO_STATS = dict()
+for player in get_players():
+    ID_TO_STATS[player['_id']] = {'goals': 0, 'assists': 0}
+all_stats = get_stats()
+goal_stats, assist_stats = all_stats['most_goals'], all_stats['most_assists']
+
+
+for pid, goals in goal_stats:
+    ID_TO_STATS[pid]['goals'] = goals
+for pid, assists in assist_stats:
+    ID_TO_STATS[pid]['assists'] = assists
+
 
 def format_player(name):
     return ID_TO_PLAYER[name]
@@ -285,11 +297,15 @@ def show_team():
     cols[0].subheader('Danh sách đội :spiral_note_pad:')
     players = get_players()
     for p in players:
+        p['goals'] = ID_TO_STATS[p['_id']]['goals']
+        p['assists'] = ID_TO_STATS[p['_id']]['assists']
         del p['_id']
         if 'photo' in p:
             del p['photo']
+
     df = pd.DataFrame.from_dict(players).rename(
-        columns={'name': 'Tên', 'alias': 'Tên thi đấu', 'yob': 'Năm sinh', 'number': 'Số áo', 'position': 'Vị trí'}
+        columns={'name': 'Tên', 'alias': 'Tên thi đấu', 'yob': 'Năm sinh', 'number': 'Số áo', 'position': 'Vị trí',
+                 'goals': 'Bàn thắng', 'assists': 'Kiến tạo'}
     )
     cols[0].table(df.assign(hack='').set_index('hack'))
 
@@ -349,12 +365,12 @@ if page == 'Trang chủ':
 
     star_columns = st.columns(6)
 
-    for i, (pid, goals) in enumerate(goal_stats):
+    for i, (pid, goals) in enumerate(goal_stats[:3]):
         if ID_TO_IMAGE.get(pid, None):
             star_columns[i].image(ID_TO_IMAGE[pid])
         star_columns[i].write(f'{MEDAL_ICONS[i]} {ID_TO_PLAYER[pid]} đã ghi {goals} bàn thắng')
 
-    for i, (pid, assists) in enumerate(assist_stats):
+    for i, (pid, assists) in enumerate(assist_stats[:3]):
         if ID_TO_IMAGE.get(pid, None):
             star_columns[i + 3].image(ID_TO_IMAGE[pid])
         star_columns[i + 3].write(f'{MEDAL_ICONS[i]} {ID_TO_PLAYER[pid]} đã kiến tạo {assists} lần')

@@ -7,6 +7,7 @@ import streamlit as st
 from db.connection import CONNECTION_STRING
 
 
+@st.experimental_memo(ttl=300)
 def get_stats():
     client = None
     try:
@@ -34,7 +35,7 @@ def get_stats():
             assist_counter.update(match['assist_list'])
 
         return {
-            'most_goals': goal_counter.most_common(3), 'most_assists': assist_counter.most_common(3),
+            'most_goals': goal_counter.most_common(), 'most_assists': assist_counter.most_common(),
             'win_count': win_count, 'lose_count': lose_count, 'tie_count': tie_count,
             'total_goals': total_goals, 'total_conceded': total_conceded
         }
