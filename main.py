@@ -79,7 +79,7 @@ def add_player_form():
                 player = Player(name, alias, yob, number, position, photo)
                 try:
                     create_player(player)
-                    st.caching.clear_memo_cache()
+                    get_players.clear()
                     st.success(f'Thêm cầu thủ {name} thành công')
                 except:
                     st.error('Có lỗi xảy ra')
@@ -122,7 +122,7 @@ def update_player_form():
                     player = Player(name, alias, yob, number, position, photo)
                     try:
                         update_player(selected_id, player)
-                        st.caching.clear_memo_cache()
+                        get_players.clear()
                         st.success(f'Cập nhật cầu thủ {name} thành công')
                     except:
                         traceback.print_exc()
@@ -173,7 +173,8 @@ def update_match_form():
                                   stadium=stadium, uniform=uniform, cost=cost, player_num=player_num)
                     try:
                         update_match(selected_id, match)
-                        st.caching.clear_memo_cache()
+                        get_matches.clear()
+                        get_stats.clear()
                         st.success(f'Cập nhật trận đấu với {opponent} thành công')
                     except:
                         traceback.print_exc()
@@ -219,7 +220,9 @@ def add_match_form():
                           stadium=stadium, uniform=uniform, cost=cost, player_num=player_num)
             try:
                 create_match(match)
-                st.caching.clear_memo_cache()
+                get_matches.clear()
+                if player_num != 0:
+                    get_stats.clear()
                 st.success(f'Thêm trận đấu với {opponent} thành công')
             except:
                 st.error('Có lỗi xảy ra')
@@ -244,7 +247,7 @@ def add_debt_form():
                     for player in players:
                         new_debt = Debt(player, date=date, value=value_per_player, desc=desc)
                         create_debt(new_debt)
-                    st.caching.clear_memo_cache()
+                    get_debt.clear()
                     st.success(f'Thêm các con nợ thành công')
                 except:
                     st.error('Có lỗi xảy ra')
@@ -264,7 +267,7 @@ def delete_debt_form():
             try:
                 if delete_ids:
                     delete_debt(delete_ids)
-                    st.caching.clear_memo_cache()
+                    get_debt.clear()
                     st.success('Xóa nợ thành công')
                 else:
                     st.error('Chưa chọn khoản nợ nào')
